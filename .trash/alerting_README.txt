@@ -1,0 +1,1 @@
+This folder previously contained alerting utilities (email_service.py), now handled by agents.

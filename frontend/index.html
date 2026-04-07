@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>AI Maintenance Engineer Dashboard</title>
+	<link rel="stylesheet" href="/style.css">
+	<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+	       <header>
+		       <h1>AI Maintenance Engineer</h1>
+		       <div id="system-health" class="indicator healthy">System Healthy</div>
+		       <div class="controls" style="margin-top:1em;">
+			       <button id="start-btn">Start Streaming</button>
+			       <button id="stop-btn" disabled>Stop Streaming</button>
+		       </div>
+	       </header>
+	       <main>
+			       <section class="live-graphs">
+				       <h2>Live Sensor Data</h2>
+					<div id="sensor-graphs">
+						<div id="sensor-graph-Air-temperature-K" class="sensor-graph"></div>
+						<div id="sensor-graph-Process-temperature-K" class="sensor-graph"></div>
+						<div id="sensor-graph-Rotational-speed-rpm" class="sensor-graph"></div>
+						<div id="sensor-graph-Torque-Nm" class="sensor-graph"></div>
+						<div id="sensor-graph-Tool-wear-min" class="sensor-graph"></div>
+					</div>
+			       </section>
+				<section class="panels">
+				       <div class="panel" id="incident-panel">
+					       <h3>Incident Details</h3>
+					       <div id="incidents-list"></div>
+					       <button id="clear-btn" style="margin-top:1em;">Clear All Data</button>
+				       </div>
+				</section>
+	       </main>
+	<footer>
+		<small>&copy; 2026 Predictive Maintenance AI System</small>
+	</footer>
+	<script src="/app.js"></script>
+</body>
+</html>
