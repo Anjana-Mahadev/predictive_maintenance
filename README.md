@@ -81,51 +81,53 @@ A modular, production-ready, agentic AI system for predictive maintenance and fa
 
 ```mermaid
 flowchart TD
-    subgraph Data
-        A[Sensor Data Stream]
-    end
-    subgraph Backend
-        B[FastAPI Server]
-        O[Orchestrator (LangGraph)]
-        B1[RetrievalAgent (RAG)]
-        B2[ReasoningAgent (Groq LLM)]
-        B3[RootCauseAgent (Groq LLM)]
-        B4[RecommendationAgent (Groq LLM)]
-        B5[VerificationAgent (Groq LLM)]
-        B6[AlertAgent (Email)]
-        B7[SchedulingAgent]
-        B8[IncidentDocAgent]
-        M[SharedMemoryState]
-        V[FAISS Vector DB]
-    end
-    subgraph Frontend
-        F1[Live Sensor Graph]
-        F2[Incident Panel]
-    end
-    A --> B
-    B --> O
-    O --> B1
-    B1 --> V
-    B1 --> M
-    B1 --> B2
-    B2 --> M
-    B2 --> B3
-    B3 --> M
-    B3 --> B4
-    B4 --> M
-    B4 --> B5
-    B5 --> M
-    B5 --> B6
-    B6 --> M
-    B6 --> B7
-    B7 --> M
-    B7 --> B8
-    B8 --> M
-    M -- Incident State --> F2
-    A -- Live Data --> F1
-    V -.-> B1
-    classDef agent fill:#f9f,stroke:#333,stroke-width:2px;
-    class B1,B2,B3,B4,B5,B6,B7,B8, O, M, V agent;
+   %% Data
+   A["Sensor Data Stream"]
+
+   %% Backend
+   B["FastAPI Server"]
+   O["Orchestrator (LangGraph)"]
+   B1["RetrievalAgent (RAG)"]
+   B2["ReasoningAgent (Groq LLM)"]
+   B3["RootCauseAgent (Groq LLM)"]
+   B4["RecommendationAgent (Groq LLM)"]
+   B5["VerificationAgent (Groq LLM)"]
+   B6["AlertAgent (Email)"]
+   B7["SchedulingAgent"]
+   B8["IncidentDocAgent"]
+   M["SharedMemoryState"]
+   V["FAISS Vector DB"]
+
+   %% Frontend
+   F1["Live Sensor Graph"]
+   F2["Incident Panel"]
+
+   %% Connections
+   A --> B
+   B --> O
+   O --> B1
+   B1 --> V
+   B1 --> M
+   B1 --> B2
+   B2 --> M
+   B2 --> B3
+   B3 --> M
+   B3 --> B4
+   B4 --> M
+   B4 --> B5
+   B5 --> M
+   B5 --> B6
+   B6 --> M
+   B6 --> B7
+   B7 --> M
+   B7 --> B8
+   B8 --> M
+   M -- "Incident State" --> F2
+   A -- "Live Data" --> F1
+   V -.-> B1
+
+   classDef agent fill:#f9f,stroke:#333,stroke-width:2px;
+   class B1,B2,B3,B4,B5,B6,B7,B8,O,M,V agent;
 ```
 
 ---
