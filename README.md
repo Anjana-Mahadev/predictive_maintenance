@@ -1,3 +1,100 @@
+# Current System Architecture (2026)
+
+## High-Level Overview
+A modular, agentic predictive maintenance platform for industrial sensor data, featuring:
+- Real-time streaming and ML-based fault/anomaly detection
+- Multi-agent pipeline (LangGraph orchestrator)
+- Retrieval-Augmented Generation (RAG) with FAISS + HuggingFace
+- Groq LLM-powered reasoning, root cause, and recommendations
+- Centralized SharedMemoryState for explainability
+- Modern dashboard UI (HTML/CSS/JS)
+
+## Main Components
+- **FastAPI Backend**: Streams sensor data, exposes agentic endpoints, serves frontend
+- **ML Models**: RandomForest (fault), IsolationForest (anomaly), SHAP explainability
+- **Agentic Pipeline** (LangGraph):
+  - RetrievalAgent (RAG/semantic search)
+  - ReasoningAgent (Groq LLM)
+  - RootCauseAgent (Groq LLM)
+  - RecommendationAgent (Groq LLM)
+  - VerificationAgent
+  - AlertAgent (email)
+  - SchedulingAgent
+  - IncidentDocAgent
+- **RAG**: Downloads, chunks, embeds, and indexes maintenance/fault docs with FAISS
+- **Frontend**: Modern dashboard with live sensor graphs, incident cards, debug modal, and full incident details
+
+## Data Flow
+1. Sensor data streamed to backend
+2. Fault/anomaly detected by ML models
+3. If fault, agentic pipeline is triggered:
+   - RetrievalAgent fetches relevant docs/context
+   - ReasoningAgent, RootCauseAgent, RecommendationAgent use Groq LLM for actionable outputs
+   - Verification, alerting, scheduling, and incident documentation
+   - All agent outputs stored in SharedMemoryState
+4. Frontend displays live graphs, incident cards, and full incident state memory
+
+## UI Features
+- Card-based incident panel (shows fault type, root cause, recommendations)
+- Incident details page (shows all state memory fields)
+- Debug modal for pipeline trace
+- Live sensor graphs
+
+## Directory Structure
+- `src/api/` — FastAPI backend
+- `src/agents/` — Agent classes
+- `src/state/` — SharedMemoryState
+- `src/ml/` — ML pipeline
+- `frontend/` — Modern UI
+- `scripts/` — RAG utilities
+- `docs/rag/` — Downloaded PDFs
+- `storage/` — FAISS vector DB
+
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+   A["Sensor Data Stream"]
+   B["FastAPI Server"]
+   O["Orchestrator (LangGraph)"]
+   B1["RetrievalAgent (RAG)"]
+   B2["ReasoningAgent (Groq LLM)"]
+   B3["RootCauseAgent (Groq LLM)"]
+   B4["RecommendationAgent (Groq LLM)"]
+   B5["VerificationAgent"]
+   B6["AlertAgent (Email)"]
+   B7["SchedulingAgent"]
+   B8["IncidentDocAgent"]
+   M["SharedMemoryState"]
+   V["FAISS Vector DB"]
+   F1["Live Sensor Graph"]
+   F2["Incident Panel"]
+   A --> B
+   B --> O
+   O --> B1
+   B1 --> V
+   B1 --> M
+   B1 --> B2
+   B2 --> M
+   B2 --> B3
+   B3 --> M
+   B3 --> B4
+   B4 --> M
+   B4 --> B5
+   B5 --> M
+   B5 --> B6
+   B6 --> M
+   B6 --> B7
+   B7 --> M
+   B7 --> B8
+   B8 --> M
+   M -- "Incident State" --> F2
+   A -- "Live Data" --> F1
+   V -.-> B1
+   classDef agent fill:#f9f,stroke:#333,stroke-width:2px;
+   class B1,B2,B3,B4,B5,B6,B7,B8,O,M,V agent;
+```
+
 ---
 
 ## Overview
@@ -91,7 +188,7 @@ flowchart TD
    B2["ReasoningAgent (Groq LLM)"]
    B3["RootCauseAgent (Groq LLM)"]
    B4["RecommendationAgent (Groq LLM)"]
-   B5["VerificationAgent (Groq LLM)"]
+   B5["VerificationAgent"]
    B6["AlertAgent (Email)"]
    B7["SchedulingAgent"]
    B8["IncidentDocAgent"]

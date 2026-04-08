@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident Details</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .incident-details-container {
+            max-width: 700px;
+            margin: 2rem auto;
+            background: #fff;
+            border-radius: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            padding: 2rem;
+        }
+        .incident-details-container h2 {
+            margin-top: 0;
+        }
+        .incident-details-list {
+            list-style: none;
+            padding: 0;
+        }
+        .incident-details-list li {
+            margin-bottom: 1.2em;
+        }
+        .incident-details-label {
+            font-weight: bold;
+            color: #1a73e8;
+        }
+        .incident-details-value {
+            margin-left: 0.5em;
+        }
+        .incident-details-back {
+            margin-top: 2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="incident-details-container">
+        <h2>Incident Details</h2>
+        <div id="incident-sections"></div>
+        <div class="incident-details-back">
+            <button onclick="window.history.back()">&larr; Back to Dashboard</button>
+        </div>
+    </div>
+    <script>
+        // --- Utility Functions ---
+        function getIncidentId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('id');
+        }
+        function getIncidents() {
+            try {
+                return JSON.parse(localStorage.getItem('incidents') || '[]');
+            } catch { return []; }
+        }
+        // Fault type mapping
+        const FAULT_TYPE_MAP = {
+            0: 'None', 1: 'TWF', 2: 'HDF', 3: 'PWF', 4: 'OSF', 5: 'RNF',
+            'TWF': 'TWF', 'HDF': 'HDF', 'PWF': 'PWF', 'OSF': 'OSF', 'RNF': 'RNF',
+            'None': 'None', 'none': 'None', '0': 'None', '': 'None', null: 'None', undefined: 'None'
+        };
+        function getFaultTypeLabel(fault) {
+            let val = fault;
+            if (typeof val === 'string' && val.startsWith('Fault: ')) val = val.replace(/^Fault: /, '');
+            if (typeof val === 'string' && !isNaN(Number(val))) val = Number(val);
+            return FAULT_TYPE_MAP.hasOwnProperty(val) ? FAULT_TYPE_MAP[val] : val;
+        }
+        function percentBar(val, max=1, color='#1a73e8') {
+            if (val === undefined || val === null || isNaN(val)) return '';
+            let pct = Math.round(100 * Math.max(0, Math.min(val / max, 1)));
+            return `<div style="display:inline-block;width:120px;height:1em;background:#eee;border-radius:0.5em;vertical-align:middle;margin-right:0.5em;overflow:hidden;">
+                <div style="width:${pct}%;height:100%;background:${color};border-radius:0.5em;"></div>
+            </div><span>${pct}%</span>`;
+        }
+        function yesNoIcon(val) {
+            return val ? '<span style="color:#388e3c;font-weight:bold;">&#10003; Yes</span>' : '<span style="color:#e53935;font-weight:bold;">&#10007; No</span>';
+        }
+        // --- Render Incident Details ---
+        function renderIncidentDetails() {
+            const id = getIncidentId();
+            const incidents = getIncidents();
+            const incident = incidents.find(inc => (inc.incident_id || inc.time || inc.timestamp) == id);
+            if (!incident) {
+                document.getElementById('incident-sections').innerHTML = '<div style="color:#e53935;">Incident not found.</div>';
+                return;
+            }
+            let html = '';
+            html += `<div style="display:flex;align-items:center;gap:1.2em;margin-bottom:1.5em;">
+                <div class="incident-avatar" style="width:54px;height:54px;font-size:2em;">${(incident.fault||incident.Fault||'!')[0]}</div>
+                <div>
+                    <div style="font-size:1.2em;font-weight:600;">${incident.root_cause||'Fault detected'}</div>
+                    <div style="margin-top:0.3em;">
+                        <span class="incident-badge ${getFaultTypeLabel(incident.fault)!=='None'?'faulty':'healthy'}">${getFaultTypeLabel(incident.fault)}</span>
+                        <span style="color:#a0aec0;margin-left:1.2em;">${incident.timestamp?new Date(incident.timestamp).toLocaleString():incident.time||''}</span>
+                    </div>
+                </div>
+            </div>`;
+            html += '<ul class="incident-details-list">';
+            for (const [k, v] of Object.entries(incident)) {
+                if (k === 'unread') continue;
+                html += `<li><span class="incident-details-label">${k.replace(/_/g,' ')}</span><span class="incident-details-value">${typeof v==='object'?JSON.stringify(v):v}</span></li>`;
+            }
+            html += '</ul>';
+            document.getElementById('incident-sections').innerHTML = html;
+        }
+        document.addEventListener('DOMContentLoaded', renderIncidentDetails);
+    </script>
+</body>
+</html>

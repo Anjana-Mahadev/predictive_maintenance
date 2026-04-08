@@ -1,3 +1,80 @@
+// --- Debug Pipeline Integration ---
+let lastSensorData = null;
+
+// Save the latest streamed sensor data
+function setLastSensorData(data) {
+    lastSensorData = data;
+}
+
+// Call /debug_pipeline and show modal
+async function debugPipelineWithLatestData() {
+    if (!lastSensorData) {
+        alert('No sensor data available yet. Start streaming first.');
+        return;
+    }
+    const btn = document.getElementById('debug-btn');
+    btn.disabled = true;
+    btn.textContent = 'Debugging...';
+    try {
+        const resp = await fetch('/debug_pipeline', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(lastSensorData)
+        });
+        const result = await resp.json();
+        showDebugModal(result.memory_snapshots);
+    } catch (e) {
+        alert('Debug pipeline failed: ' + e);
+    }
+    btn.disabled = false;
+    btn.textContent = 'Debug Pipeline';
+}
+
+function showDebugModal(snapshots) {
+    const modal = document.getElementById('debug-modal');
+    const content = document.getElementById('debug-modal-content');
+    if (!snapshots || !snapshots.length) {
+        content.textContent = 'No debug data.';
+    } else {
+        content.innerHTML = snapshots.map((snap, idx) =>
+            `<div style="margin-bottom:1.2em;"><b>Stage ${idx + 1}:</b><br><pre style="background:#181c20;padding:0.7em 1em;border-radius:6px;overflow-x:auto;">${JSON.stringify(snap, null, 2)}</pre></div>`
+        ).join('');
+    }
+    modal.style.display = 'flex';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Modal close logic
+    const modal = document.getElementById('debug-modal');
+    const closeBtn = document.getElementById('close-debug-modal');
+    if (closeBtn) closeBtn.onclick = () => { modal.style.display = 'none'; };
+    // Debug button logic
+    const debugBtn = document.getElementById('debug-btn');
+    if (debugBtn) debugBtn.onclick = debugPipelineWithLatestData;
+});
+
+// Patch streaming to save last sensor data
+const origEventSourceHandler = window.eventSource && window.eventSource.onmessage;
+function patchEventSourceForDebug() {
+    if (!window.eventSource) return;
+    const orig = window.eventSource.onmessage;
+    window.eventSource.onmessage = async function(event) {
+        let data;
+        try {
+            data = JSON.parse(event.data.replace(/'/g, '"'));
+        } catch (e) {
+            try { data = eval('(' + event.data + ')'); } catch (e2) { return; }
+        }
+        setLastSensorData(data);
+        if (orig) await orig.call(this, event);
+    };
+}
+// Patch after streaming starts
+const origStartStreaming = startStreaming;
+startStreaming = function() {
+    origStartStreaming();
+    setTimeout(patchEventSourceForDebug, 100);
+};
 // Map sensor names to safe HTML IDs
 function getSafeId(sensor) {
 	return {
@@ -60,13 +137,17 @@ function initGraph() {
 		graphData[sensor] = { x: [], y: [] };
 		Plotly.newPlot(
 			getSafeId(sensor),
-			[{ x: [], y: [], name: sensor, mode: 'lines' }],
+			[{ x: [], y: [], name: sensor, mode: 'lines', line: { width: 2, color: '#1a73e8' } }],
 			{
-				margin: { t: 30 },
+				margin: { t: 10, l: 30, r: 10, b: 20 },
 				showlegend: false,
-				xaxis: { title: 'Time (s)' },
-				yaxis: { title: sensor }
-			}
+				xaxis: { title: '', showticklabels: false, showgrid: false, zeroline: false },
+				yaxis: { title: '', showticklabels: false, showgrid: false, zeroline: false },
+				paper_bgcolor: '#23272b',
+				plot_bgcolor: '#23272b',
+				height: 80
+			},
+			{ displayModeBar: false }
 		);
 	});
 }
@@ -96,130 +177,124 @@ function updateGraph(sensorData) {
     });
 }
 
-// --- Incident Storage ---
+
+// --- Fault Type Mapping ---
+const FAULT_TYPE_MAP = {
+    0: 'None',
+    1: 'TWF', // Tool Wear Failure
+    2: 'HDF', // Heat Dissipation Failure
+    3: 'PWF', // Power Failure
+    4: 'OSF', // Overstrain Failure
+    5: 'RNF', // Random Failure
+    'TWF': 'TWF',
+    'HDF': 'HDF',
+    'PWF': 'PWF',
+    'OSF': 'OSF',
+    'RNF': 'RNF',
+    'None': 'None',
+    'none': 'None',
+    '0': 'None',
+    '': 'None',
+    null: 'None',
+    undefined: 'None'
+};
+
+
 let incidents = [];
+
 
 function renderIncidents() {
     const container = document.getElementById('incidents-list');
     if (!container) return;
     container.innerHTML = '';
+    // Show all incidents (not just faults)
+    const getFaultTypeLabel = (fault) => {
+        let val = fault;
+        if (typeof val === 'string' && val.startsWith('Fault: ')) val = val.replace(/^Fault: /, '');
+        if (typeof val === 'string' && !isNaN(Number(val))) val = Number(val);
+        return FAULT_TYPE_MAP.hasOwnProperty(val) ? FAULT_TYPE_MAP[val] : val;
+    };
+    // Update incident count summary card (only real faults)
+    const isFault = (incident) => {
+        const faultVal = getFaultTypeLabel(incident.fault);
+        return faultVal && faultVal !== 'None' && faultVal !== 'No Fault' && faultVal !== '0';
+    };
+    const faultIncidents = incidents.filter(isFault);
+    const countCard = document.getElementById('incident-count');
+    if (countCard) countCard.textContent = faultIncidents.length;
     if (incidents.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'incident-empty';
-        empty.textContent = 'No incidents recorded.';
-        container.appendChild(empty);
+        container.innerHTML = '<div class="incident-list-empty">No incidents yet. All systems normal.</div>';
         return;
     }
-    // Tabbed UI for incidents
-    const tabs = document.createElement('div');
-    tabs.className = 'incident-tabs';
-    const tabContent = document.createElement('div');
-    tabContent.className = 'incident-tab-content';
-    let activeIdx = 0;
-    // If a tab was previously selected, keep it
-    if (window.activeIncidentTab !== undefined && window.activeIncidentTab < incidents.length) {
-        activeIdx = window.activeIncidentTab;
-    }
-    incidents.forEach((incident, idx) => {
-        const tab = document.createElement('button');
-        tab.className = 'incident-tab' + (idx === activeIdx ? ' active' : '');
-        tab.textContent = `Incident ${idx + 1}`;
-        tab.onclick = () => {
-            window.activeIncidentTab = idx;
-            renderIncidents();
+    incidents.slice().reverse().forEach((incident, idx) => {
+        const card = document.createElement('div');
+        card.className = 'incident-card';
+        const faultType = getFaultTypeLabel(incident.fault);
+        card.innerHTML = `
+            <div class="incident-card-header">
+                <span class="incident-fault-type ${faultType !== 'None' ? 'faulty' : 'healthy'}">${faultType || 'None'}</span>
+                <span class="incident-confidence">Confidence: <b>${typeof incident.confidence === 'number' ? (incident.confidence * 100).toFixed(1) + '%' : 'N/A'}</b></span>
+                <span class="incident-time">${incident.time || incident.timestamp || ''}</span>
+            </div>
+            <div class="incident-card-body">
+                <div><strong>Root Cause:</strong> <span>${incident.root_cause || incident.rootCause || 'N/A'}</span></div>
+                <div><strong>Recommendations:</strong><ul>${(incident.recommendations || []).map(r => {
+                    if (typeof r === 'object' && r !== null) {
+                        const rec = r.Recommendation || r.recommendation || '';
+                        const desc = r.Description || r.description || '';
+                        return `<li><b>${rec}</b><br><span style='font-size:90%'>${desc}</span></li>`;
+                    } else {
+                        return `<li>${r}</li>`;
+                    }
+                }).join('')}</ul></div>
+            </div>
+        `;
+        card.onclick = () => {
+            window.location.href = '/incident.html?id=' + encodeURIComponent(getIncidentId(incident));
         };
-        tabs.appendChild(tab);
+        container.appendChild(card);
     });
-    // Render active incident details
-    const incident = incidents[activeIdx];
-    const div = document.createElement('div');
-    div.className = 'incident-entry';
-    div.innerHTML = `<div><strong>Fault:</strong> ${incident.fault}</div>` +
-        `<div><strong>Root Cause:</strong> ${incident.rootCause}</div>` +
-        `<div><strong>Recommendations:</strong><ul>${incident.recommendations.map(r => {
-            if (typeof r === 'object' && r !== null) {
-                // Render Recommendation and Description fields if present
-                const rec = r.Recommendation || r.recommendation || '';
-                const desc = r.Description || r.description || '';
-                return `<li><b>${rec}</b><br><span style='font-size:90%'>${desc}</span></li>`;
-            } else {
-                return `<li>${r}</li>`;
-            }
-        }).join('')}</ul></div>` +
-        `<div class="incident-time">${incident.time}</div>`;
-    tabContent.appendChild(div);
-    container.appendChild(tabs);
-    container.appendChild(tabContent);
-    // Save active tab globally
-    window.activeIncidentTab = activeIdx;
+    // Save all incidents to localStorage for details page access
+    try { localStorage.setItem('incidents', JSON.stringify(incidents)); } catch {}
 }
 
-function setSystemHealth(healthy) {
-	const el = document.getElementById('system-health');
-	if (healthy) {
-		el.textContent = 'System Healthy';
-		el.classList.remove('faulty');
-		el.classList.add('healthy');
-	} else {
-		el.textContent = 'Fault Detected!';
-		el.classList.remove('healthy');
-		el.classList.add('faulty');
-	}
-}
-
-function showIncidentLoading() {
-    const container = document.getElementById('incidents-list');
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'incident-loading';
-    loadingDiv.textContent = 'Loading incident details...';
-    container.innerHTML = '';
-    container.appendChild(loadingDiv);
-}
-
-async function callAgenticPipeline(sensorData) {
-    try {
-        const response = await fetch('/rag/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(sensorData)
-        });
-        if (!response.ok) throw new Error('Backend error');
-        return await response.json();
-    } catch (e) {
-        return {
-            fault: 1,
-            root_cause: 'Unknown (backend error)',
-            recommendations: ['Check backend connection'],
-            confidence: 0,
-            sources: [],
-            incident_id: null
-        };
-    }
-}
-
+// --- Add incident from backend ---
 function setIncidentDetailsFromBackend(incident) {
     if (incident && typeof incident.fault !== 'undefined') {
         let faultLabel;
         const noFaultValues = [undefined, null, '', 0, '0', 'None', 'none', false];
         if (noFaultValues.includes(incident.fault)) {
-            faultLabel = 'Fault: None';
+            faultLabel = 'None';
         } else if (typeof incident.fault === 'string' && incident.fault.trim().toLowerCase() === 'none') {
-            faultLabel = 'Fault: None';
+            faultLabel = 'None';
         } else {
-            faultLabel = `Fault: ${incident.fault}`;
+            faultLabel = incident.fault.toString().replace(/^Fault: /, '').trim();
         }
-        incidents.push({
+        const newIncident = {
+            ...incident,
             fault: faultLabel,
-            rootCause: incident.root_cause || 'N/A',
+            root_cause: incident.root_cause || incident.rootCause || 'N/A',
             recommendations: incident.recommendations && incident.recommendations.length ? incident.recommendations : ['N/A'],
             time: new Date().toLocaleString(),
-            confidence: incident.confidence,
-            sources: incident.sources,
-            incident_id: incident.incident_id
-        });
+            incident_id: incident.incident_id || Date.now().toString()
+        };
+        incidents.push(newIncident);
+        try { localStorage.setItem('incidents', JSON.stringify(incidents)); } catch {}
     }
     renderIncidents();
 }
+
+// --- Utility: Unique incident ID ---
+function getIncidentId(incident) {
+    return incident.incident_id || incident.timestamp || incident.time || '';
+}
+
+// --- On load, render incidents and initialize graph ---
+document.addEventListener('DOMContentLoaded', function() {
+    renderIncidents();
+    initGraph();
+    setSystemHealth(true);
+});
 
 // Replace clearAllData
 function clearAllData() {
@@ -299,8 +374,111 @@ document.getElementById('start-btn').addEventListener('click', startStreaming);
 document.getElementById('stop-btn').addEventListener('click', stopStreaming);
 document.getElementById('clear-btn').addEventListener('click', clearAllData);
 
-document.addEventListener('DOMContentLoaded', () => {
-	initGraph();
-	setSystemHealth(true);
-	renderIncidents();
+document.addEventListener('DOMContentLoaded', function() {
+    renderIncidents();
+    initGraph();
+    setSystemHealth(true);
+});
+
+// --- Modern Fault Incident List (Gmail-style, only real faults) ---
+// function renderIncidentList() {
+//     const list = document.getElementById('incidents-list');
+//     const empty = document.getElementById('incident-list-empty');
+//     if (!list) return;
+//     let incidents = [];
+//     try {
+//         incidents = JSON.parse(localStorage.getItem('incidents') || '[]');
+//     } catch { incidents = []; }
+//     // Only show real faults (robust to label prefix)
+//     const realFaults = incidents.filter(inc => {
+//         let val = (inc.fault || inc.Fault || '').toString().replace(/^Fault: /, '').trim();
+//         return val && val !== 'None' && val !== '0' && val !== 'No Fault';
+//     });
+//     list.innerHTML = '';
+//     if (!realFaults.length) {
+//         if (empty) empty.style.display = '';
+//         return;
+//     }
+//     if (empty) empty.style.display = 'none';
+//     realFaults.slice().reverse().forEach((incident, idx) => {
+//         const row = document.createElement('div');
+//         row.className = 'incident-row' + (incident.unread ? ' unread' : '');
+//         let ft = (incident.fault || incident.Fault || 'N').toString().replace(/^Fault: /, '').trim();
+//         const avatar = document.createElement('div');
+//         avatar.className = 'incident-avatar';
+//         avatar.textContent = ft[0] ? ft[0].toUpperCase() : '!';
+//         row.appendChild(avatar);
+//         const main = document.createElement('div');
+//         main.className = 'incident-main';
+//         const title = document.createElement('div');
+//         title.className = 'incident-title';
+//         // Show root cause or a clear message
+//         if (ft !== 'None') {
+//             title.textContent = incident.root_cause || incident.rootCause || `Fault detected: ${ft}`;
+//         } else {
+//             title.textContent = 'System is normal';
+//         }
+//         main.appendChild(title);
+//         const meta = document.createElement('div');
+//         meta.className = 'incident-meta';
+//         const badge = document.createElement('span');
+//         badge.className = 'incident-badge ' + (ft !== 'None' ? 'faulty' : 'healthy');
+//         badge.textContent = ft;
+//         meta.appendChild(badge);
+//         const time = document.createElement('span');
+//         time.className = 'incident-time';
+//         time.textContent = incident.timestamp ? new Date(incident.timestamp).toLocaleString() : (incident.time || '');
+//         meta.appendChild(time);
+//         main.appendChild(meta);
+//         // Show recommendations if fault, else nothing
+//         if (ft !== 'None' && incident.recommendations && incident.recommendations.length) {
+//             const recs = document.createElement('div');
+//             recs.innerHTML = `<strong>Recommendations:</strong><ul>${incident.recommendations.map(r => {
+//                 if (typeof r === 'object' && r !== null) {
+//                     const rec = r.Recommendation || r.recommendation || '';
+//                     const desc = r.Description || r.description || '';
+//                     return `<li><b>${rec}</b><br><span style='font-size:90%'>${desc}</span></li>`;
+//                 } else {
+//                     return `<li>${r}</li>`;
+//                 }
+//             }).join('')}</ul>`;
+//             main.appendChild(recs);
+//         }
+//         row.appendChild(main);
+//         row.onclick = () => {
+//             incident.unread = false;
+//             localStorage.setItem('incidents', JSON.stringify(incidents));
+//             window.location.href = '/incident.html?idx=' + (incidents.length - 1 - idx);
+//         };
+//         list.appendChild(row);
+//     });
+// }
+
+// --- Simplified Graph Rendering for Mini Graphs with Labels ---
+function initGraph() {
+    time = 0;
+    sensors.forEach(sensor => {
+        graphData[sensor] = { x: [], y: [] };
+        Plotly.newPlot(
+            getSafeId(sensor),
+            [{ x: [], y: [], name: sensor, mode: 'lines', line: { width: 2, color: '#1a73e8' } }],
+            {
+                margin: { t: 10, l: 30, r: 10, b: 30 },
+                showlegend: false,
+                xaxis: { title: 'Time (s)', showticklabels: false, showgrid: false, zeroline: false, titlefont: { color: '#a0aec0', size: 10 } },
+                yaxis: { title: sensor, showticklabels: false, showgrid: false, zeroline: false, titlefont: { color: '#a0aec0', size: 10 } },
+                paper_bgcolor: '#23272b',
+                plot_bgcolor: '#23272b',
+                height: 80
+            },
+            { displayModeBar: false }
+        );
+    });
+}
+
+// --- On load ---
+document.addEventListener('DOMContentLoaded', function() {
+    renderIncidents();
+    initGraph();
+    setSystemHealth(true);
 });

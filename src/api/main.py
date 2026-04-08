@@ -1,4 +1,7 @@
 
+
+
+
 from dotenv import load_dotenv
 load_dotenv()
 from fastapi import FastAPI, Request
@@ -11,7 +14,6 @@ import time
 import threading
 from typing import List, Dict, Any
 from fastapi.staticfiles import StaticFiles
-
 # --- Import Orchestrator ---
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -103,10 +105,13 @@ async def rag_analyze_endpoint(payload: Dict[str, Any]):
 	if int(pred) == 1:
 		# Fault detected, trigger agentic pipeline
 		result = await orchestrator.run_pipeline(payload)
-		# Only overwrite fault if ReasoningAgent did not return a specific fault type
 		fault_val = result.get("fault")
-		if not fault_val or (isinstance(fault_val, str) and fault_val.strip() in ["", "Unknown", "N/A", "None"]):
-			result["fault"] = int(pred) if hasattr(pred, 'item') else pred
+		# If ReasoningAgent returned a valid fault type, always use it
+		if fault_val and isinstance(fault_val, str) and fault_val.strip() not in ["", "Unknown", "N/A", "None", "0", "0.0"]:
+			result["fault"] = fault_val.strip()
+		else:
+			# Fallback to model's 1 if LLM failed
+			result["fault"] = "Unknown"
 		# Always set confidence
 		result["confidence"] = float(proba) if hasattr(proba, 'item') else proba
 		print(f"DEBUG: Outgoing /rag/analyze response type: {type(result)} value: {result}")
@@ -114,7 +119,7 @@ async def rag_analyze_endpoint(payload: Dict[str, Any]):
 	else:
 		# No fault, return healthy response
 		return {
-			"fault": 0,
+			"fault": "None",
 			"confidence": float(proba),
 			"anomaly_score": 0.0,
 			"root_cause": "N/A",

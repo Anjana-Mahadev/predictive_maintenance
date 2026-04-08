@@ -7,37 +7,62 @@
 	<link rel="stylesheet" href="/style.css">
 	<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
-<body>
-	       <header>
-		       <h1>AI Maintenance Engineer</h1>
-		       <div id="system-health" class="indicator healthy">System Healthy</div>
-		       <div class="controls" style="margin-top:1em;">
-			       <button id="start-btn">Start Streaming</button>
-			       <button id="stop-btn" disabled>Stop Streaming</button>
-		       </div>
-	       </header>
-	       <main>
-			       <section class="live-graphs">
-				       <h2>Live Sensor Data</h2>
-					<div id="sensor-graphs">
-						<div id="sensor-graph-Air-temperature-K" class="sensor-graph"></div>
-						<div id="sensor-graph-Process-temperature-K" class="sensor-graph"></div>
-						<div id="sensor-graph-Rotational-speed-rpm" class="sensor-graph"></div>
-						<div id="sensor-graph-Torque-Nm" class="sensor-graph"></div>
-						<div id="sensor-graph-Tool-wear-min" class="sensor-graph"></div>
-					</div>
-			       </section>
-				<section class="panels">
-				       <div class="panel" id="incident-panel">
-					       <h3>Incident Details</h3>
-					       <div id="incidents-list"></div>
-					       <button id="clear-btn" style="margin-top:1em;">Clear All Data</button>
-				       </div>
-				</section>
-	       </main>
+<body class="dark-theme">
+	<header class="dashboard-header">
+		<div class="header-row">
+			<h1><span class="logo-icon">&#9881;</span> AI Maintenance Engineer</h1>
+		</div>
+		<div class="dashboard-summary">
+			<div class="summary-card" id="health-card">
+				<div class="summary-label">System Health</div>
+				<div id="system-health" class="summary-value healthy">Healthy</div>
+			</div>
+			<div class="summary-card" id="stream-card">
+				<div class="summary-label">Streaming</div>
+				<div id="stream-status" class="summary-value">Stopped</div>
+			</div>
+			<div class="summary-card" id="incident-count-card">
+				<div class="summary-label">Incidents</div>
+				<div id="incident-count" class="summary-value">0</div>
+			</div>
+		</div>
+		<div class="controls">
+			<button id="start-btn">Start Streaming</button>
+			<button id="stop-btn" disabled>Stop Streaming</button>
+			<button id="debug-btn" title="Debug pipeline with latest data">Debug Pipeline</button>
+		</div>
+	</header>
+	<main class="main-flex">
+		<aside class="sidebar-graphs">
+			<h2>Live Sensor Data</h2>
+			<div id="sensor-graphs" style="display: flex; flex-direction: column; gap: 1.2em;">
+				<div id="sensor-graph-Air-temperature-K" class="sensor-graph mini"></div>
+				<div id="sensor-graph-Process-temperature-K" class="sensor-graph mini"></div>
+				<div id="sensor-graph-Rotational-speed-rpm" class="sensor-graph mini"></div>
+				<div id="sensor-graph-Torque-Nm" class="sensor-graph mini"></div>
+				<div id="sensor-graph-Tool-wear-min" class="sensor-graph mini"></div>
+			</div>
+		</aside>
+		<section class="incident-list-section">
+			<div class="incident-list-header">
+				<h2>Incidents</h2>
+				<button id="clear-btn" title="Clear all incidents">🗑️</button>
+			</div>
+			<div id="incidents-list" class="incident-list"></div>
+			<div class="incident-list-empty" id="incident-list-empty">No incidents yet. All systems normal.</div>
+		</section>
+	</main>
 	<footer>
 		<small>&copy; 2026 Predictive Maintenance AI System</small>
 	</footer>
+	<!-- Debug Modal -->
+	<div id="debug-modal" class="modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+		<div style="background:#23272b;color:#fff;padding:2em 2em 1em 2em;border-radius:8px;max-width:700px;width:90vw;max-height:80vh;overflow:auto;position:relative;">
+			<button id="close-debug-modal" style="position:absolute;top:0.5em;right:0.5em;font-size:1.2em;">&times;</button>
+			<h2>Pipeline Memory State Debug</h2>
+			<div id="debug-modal-content" style="font-size:0.95em;white-space:pre-wrap;"></div>
+		</div>
+	</div>
 	<script src="/app.js"></script>
 </body>
 </html>
