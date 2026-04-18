@@ -4,38 +4,56 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>AI Maintenance Engineer Dashboard</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="/style.css">
 	<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body class="dark-theme">
+
+	<!-- ===== HEADER ===== -->
 	<header class="dashboard-header">
 		<div class="header-row">
 			<h1><span class="logo-icon">&#9881;</span> AI Maintenance Engineer</h1>
+			<div class="controls">
+				<button id="start-btn">&#9654; Start Streaming</button>
+				<button id="stop-btn" disabled>&#9632; Stop</button>
+				<button id="debug-btn" title="Debug pipeline with latest data">&#128269; Debug Pipeline</button>
+			</div>
 		</div>
+
 		<div class="dashboard-summary">
 			<div class="summary-card" id="health-card">
 				<div class="summary-label">System Health</div>
-				<div id="system-health" class="summary-value healthy">Healthy</div>
+				<div class="summary-value healthy" id="system-health">&#128994; Healthy</div>
 			</div>
 			<div class="summary-card" id="stream-card">
 				<div class="summary-label">Streaming</div>
-				<div id="stream-status" class="summary-value">Stopped</div>
+				<div class="summary-value" id="stream-status">&#128308; Stopped</div>
 			</div>
 			<div class="summary-card" id="incident-count-card">
-				<div class="summary-label">Incidents</div>
-				<div id="incident-count" class="summary-value">0</div>
+				<div class="summary-label">Active Incidents</div>
+				<div class="summary-value"><span class="kpi-icon">&#9888;&#65039;</span> <span id="incident-count">0</span></div>
+			</div>
+			<div class="summary-card" id="kpi-failure-rate">
+				<div class="summary-label">Failure Rate</div>
+				<div class="summary-value"><span id="kpi-failure-rate-value">55.25%</span> <span class="kpi-trend kpi-down">&#8595; 2.3%</span></div>
+			</div>
+			<div class="summary-card" id="kpi-model-accuracy">
+				<div class="summary-label">Model Accuracy</div>
+				<div class="summary-value"><span id="kpi-model-accuracy-value">94.7%</span> <span class="kpi-trend kpi-up">&#8593; 1.2%</span></div>
 			</div>
 		</div>
-		<div class="controls">
-			<button id="start-btn">Start Streaming</button>
-			<button id="stop-btn" disabled>Stop Streaming</button>
-			<button id="debug-btn" title="Debug pipeline with latest data">Debug Pipeline</button>
-		</div>
 	</header>
+
+	<!-- ===== MAIN LAYOUT ===== -->
 	<main class="main-flex">
+
+		<!-- Sidebar: Sensor Graphs -->
 		<aside class="sidebar-graphs">
-			<h2>Live Sensor Data</h2>
-			<div id="sensor-graphs" style="display: flex; flex-direction: column; gap: 1.2em;">
+			<h2>Live Sensors</h2>
+			<div id="sensor-graphs" style="display:flex;flex-direction:column;gap:0.6rem;">
 				<div id="sensor-graph-Air-temperature-K" class="sensor-graph mini"></div>
 				<div id="sensor-graph-Process-temperature-K" class="sensor-graph mini"></div>
 				<div id="sensor-graph-Rotational-speed-rpm" class="sensor-graph mini"></div>
@@ -43,26 +61,111 @@
 				<div id="sensor-graph-Tool-wear-min" class="sensor-graph mini"></div>
 			</div>
 		</aside>
+
+		<!-- Center: Incidents -->
 		<section class="incident-list-section">
 			<div class="incident-list-header">
 				<h2>Incidents</h2>
-				<button id="clear-btn" title="Clear all incidents">🗑️</button>
+				<div class="incident-panel-controls">
+					<button id="clear-btn" title="Clear all incidents">&#128465; Clear</button>
+				</div>
 			</div>
 			<div id="incidents-list" class="incident-list"></div>
 			<div class="incident-list-empty" id="incident-list-empty">No incidents yet. All systems normal.</div>
+			<div class="incident-panel-footer">
+				<small>Severity: <span class="badge critical">Critical</span> <span class="badge high">High</span> <span class="badge medium">Medium</span></small>
+			</div>
+		</section>
+
+		<!-- Right: Dashboard Analytics -->
+		<section class="dashboard-sections">
+
+			<!-- Data Overview -->
+			<div class="dashboard-card" id="data-overview">
+				<h2>Data Overview</h2>
+				<div class="dashboard-metrics">
+					<div class="metric"><span>Total Records</span><span id="metric-total-records">10,000</span></div>
+					<div class="metric"><span>Normal Ops</span><span id="metric-normal-ops">4,475</span></div>
+					<div class="metric"><span>Failures</span><span id="metric-failures">5,525</span></div>
+					<div class="metric"><span>Failure Rate</span><span id="metric-failure-rate">55.25%</span></div>
+					<div class="metric"><span>Features</span><span id="metric-features">14</span></div>
+					<div class="metric"><span>Failure Modes</span><span id="metric-failure-modes">5</span></div>
+				</div>
+			</div>
+
+			<!-- Feature Analysis -->
+			<div class="dashboard-card" id="feature-analysis">
+				<h2>Feature Analysis</h2>
+				<div id="feature-correlation-chart" style="height:180px;"></div>
+				<ul class="feature-insights">
+					<li><b>Strong Temp Correlation:</b> Air &amp; process temps show 0.85 correlation.</li>
+					<li><b>Speed-Torque Inverse:</b> r = -0.72 between speed and torque.</li>
+					<li><b>Tool Wear + Torque:</b> r = 0.18 between tool wear and torque.</li>
+				</ul>
+			</div>
+
+			<!-- Failure Modes -->
+			<div class="dashboard-card" id="failure-modes">
+				<h2>Failure Modes Analysis</h2>
+				<div class="failure-modes-list">
+					<div class="failure-mode"><b>Tool Wear:</b> Wear &gt; 200 min</div>
+					<div class="failure-mode"><b>Heat Dissipation:</b> &#916;T &gt; 15K + Low RPM</div>
+					<div class="failure-mode"><b>Power Failure:</b> Power &gt; 120 W</div>
+					<div class="failure-mode"><b>Overstrain:</b> Torque &gt; 60 Nm</div>
+					<div class="failure-mode"><b>Random:</b> 0.5% Probability</div>
+				</div>
+			</div>
+
+			<!-- Predictive Model -->
+			<div class="dashboard-card" id="predictive-model">
+				<h2>Predictive Model</h2>
+				<div class="model-metrics">
+					<div class="metric"><span>Accuracy</span><span id="metric-accuracy">94.7%</span></div>
+					<div class="metric"><span>Precision</span><span id="metric-precision">92.3%</span></div>
+					<div class="metric"><span>Recall</span><span id="metric-recall">89.8%</span></div>
+					<div class="metric"><span>F1 Score</span><span id="metric-f1">91%</span></div>
+					<div class="metric"><span>AUC-ROC</span><span id="metric-auc">0.947</span></div>
+					<div class="metric"><span>Model</span><span id="metric-model">RandomForest</span></div>
+				</div>
+				<div id="confusion-matrix-chart" style="height:120px;"></div>
+			</div>
+
+			<!-- Agentic Pipeline -->
+			<div class="dashboard-card" id="agentic-pipeline">
+				<h2>Agentic Pipeline</h2>
+				<div id="pipeline-flow-chart" style="height:120px;"></div>
+				<div class="pipeline-agents">
+					<span>Orchestrator</span> <span class="pipeline-arrow">&#8594;</span>
+					<span>RetrievalAgent</span> <span class="pipeline-arrow">&#8594;</span>
+					<span>ReasoningAgent</span> <span class="pipeline-arrow">&#8594;</span>
+					<span>RootCauseAgent</span> <span class="pipeline-arrow">&#8594;</span>
+					<span>RecommendationAgent</span> <span class="pipeline-arrow">&#8594;</span>
+					<span>VerificationAgent</span> <span class="pipeline-arrow">&#8594;</span>
+					<span>AlertAgent</span> <span class="pipeline-arrow">&#8594;</span>
+					<span>SchedulingAgent</span> <span class="pipeline-arrow">&#8594;</span>
+					<span>IncidentDocAgent</span>
+				</div>
+				<div class="rag-knowledge-base">
+					<b>RAG Knowledge Base:</b> ISO 13849, IEC 60034-1, Best Practices, AI4I Dataset, SHAP Explainability
+				</div>
+			</div>
+
 		</section>
 	</main>
+
 	<footer>
 		<small>&copy; 2026 Predictive Maintenance AI System</small>
 	</footer>
+
 	<!-- Debug Modal -->
-	<div id="debug-modal" class="modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
-		<div style="background:#23272b;color:#fff;padding:2em 2em 1em 2em;border-radius:8px;max-width:700px;width:90vw;max-height:80vh;overflow:auto;position:relative;">
-			<button id="close-debug-modal" style="position:absolute;top:0.5em;right:0.5em;font-size:1.2em;">&times;</button>
+	<div id="debug-modal" style="display:none;">
+		<div>
+			<button id="close-debug-modal">&times;</button>
 			<h2>Pipeline Memory State Debug</h2>
-			<div id="debug-modal-content" style="font-size:0.95em;white-space:pre-wrap;"></div>
+			<div id="debug-modal-content"></div>
 		</div>
 	</div>
+
 	<script src="/app.js"></script>
 </body>
 </html>
