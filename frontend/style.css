@@ -4,42 +4,42 @@
 
 /* --- CSS Custom Properties --- */
 :root {
-	--bg-primary: #0b0f19;
-	--bg-secondary: #111827;
-	--bg-card: #1a1f2e;
-	--bg-card-hover: #212738;
-	--bg-elevated: #242a3d;
-	--bg-input: #0f1420;
+	--bg-primary: #071b2d;
+	--bg-secondary: #0f2a48;
+	--bg-card: #132f55;
+	--bg-card-hover: #173a69;
+	--bg-elevated: #1c446f;
+	--bg-input: #0f293f;
 
-	--border-subtle: rgba(255, 255, 255, 0.06);
-	--border-card: rgba(255, 255, 255, 0.08);
-	--border-accent: rgba(59, 130, 246, 0.3);
+	--border-subtle: rgba(146, 198, 245, 0.08);
+	--border-card: rgba(146, 198, 245, 0.1);
+	--border-accent: rgba(56, 189, 248, 0.35);
 
-	--text-primary: #f1f5f9;
-	--text-secondary: #94a3b8;
-	--text-muted: #64748b;
+	--text-primary: #e7f6ff;
+	--text-secondary: #b1d0ff;
+	--text-muted: #8aaed8;
 
-	--accent: #3b82f6;
-	--accent-hover: #2563eb;
-	--accent-glow: rgba(59, 130, 246, 0.15);
-	--accent-soft: rgba(59, 130, 246, 0.1);
+	--accent: #38bdf8;
+	--accent-hover: #0ea5e9;
+	--accent-glow: rgba(56, 189, 248, 0.16);
+	--accent-soft: rgba(56, 189, 248, 0.12);
 
-	--success: #10b981;
-	--success-soft: rgba(16, 185, 129, 0.12);
-	--danger: #ef4444;
-	--danger-soft: rgba(239, 68, 68, 0.12);
+	--success: #22c55e;
+	--success-soft: rgba(34, 197, 94, 0.14);
+	--danger: #fb7185;
+	--danger-soft: rgba(251, 113, 133, 0.14);
 	--warning: #f59e0b;
-	--warning-soft: rgba(245, 158, 11, 0.12);
+	--warning-soft: rgba(245, 158, 11, 0.16);
 
 	--radius-sm: 0.5rem;
 	--radius-md: 0.75rem;
 	--radius-lg: 1rem;
 	--radius-xl: 1.25rem;
 
-	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
-	--shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.35);
-	--shadow-glow: 0 0 20px rgba(59, 130, 246, 0.1);
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
+	--shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.28);
+	--shadow-glow: 0 0 24px rgba(56, 189, 248, 0.14);
 
 	--transition-fast: 150ms ease;
 	--transition-normal: 250ms ease;
